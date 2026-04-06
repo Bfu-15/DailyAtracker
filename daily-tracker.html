@@ -1,0 +1,889 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<meta name="theme-color" content="#0a0a0a">
+<title>The Plan</title>
+<link href="https://fonts.googleapis.com/css2?family=Bebas+Neue&family=DM+Sans:ital,wght@0,300;0,400;0,500;1,300&family=DM+Mono:wght@400;500&display=swap" rel="stylesheet">
+<style>
+  :root {
+    --black: #0a0a0a;
+    --cream: #f0ece3;
+    --orange: #e8521a;
+    --grey: #1a1a1a;
+    --dim: #555;
+    --muted: #888;
+    --tab-h: 64px;
+    --safe-bottom: env(safe-area-inset-bottom, 0px);
+  }
+  * { margin:0; padding:0; box-sizing:border-box; -webkit-tap-highlight-color:transparent; }
+  html,body { height:100%; overflow:hidden; background:var(--black); color:var(--cream); font-family:'DM Sans',sans-serif; font-weight:300; }
+  #app { display:flex; flex-direction:column; height:100dvh; max-width:480px; margin:0 auto; position:relative; }
+  .screen { flex:1; overflow-y:auto; overflow-x:hidden; -webkit-overflow-scrolling:touch; padding-bottom:calc(var(--tab-h) + var(--safe-bottom) + 20px); display:none; }
+  .screen.active { display:block; }
+
+  /* NAV */
+  nav { position:fixed; bottom:0; left:50%; transform:translateX(-50%); width:100%; max-width:480px; height:calc(var(--tab-h) + var(--safe-bottom)); background:rgba(12,12,12,0.97); backdrop-filter:blur(20px); border-top:1px solid #1e1e1e; display:flex; align-items:flex-start; z-index:50; }
+  .tab { flex:1; display:flex; flex-direction:column; align-items:center; justify-content:center; height:var(--tab-h); gap:4px; cursor:pointer; opacity:0.4; border:none; background:none; color:var(--cream); padding:0; transition:opacity 0.15s; }
+  .tab.active { opacity:1; }
+  .tab svg { width:20px; height:20px; }
+  .tab span { font-family:'DM Mono',monospace; font-size:9px; letter-spacing:0.1em; text-transform:uppercase; }
+  .tab.active span { color:var(--orange); }
+  .tab.active svg { stroke:var(--orange); }
+
+  /* SHARED */
+  .page-header { padding:52px 24px 20px; border-bottom:1px solid #1a1a1a; }
+  .page-label { font-family:'DM Mono',monospace; font-size:10px; letter-spacing:0.15em; color:var(--orange); text-transform:uppercase; margin-bottom:8px; }
+  .page-title { font-family:'Bebas Neue',sans-serif; font-size:44px; line-height:0.95; letter-spacing:0.02em; }
+  .page-sub { font-size:13px; color:var(--muted); margin-top:10px; line-height:1.6; }
+  .section-label { font-family:'DM Mono',monospace; font-size:10px; letter-spacing:0.12em; color:var(--orange); text-transform:uppercase; margin-bottom:12px; }
+  .section-title { font-family:'Bebas Neue',sans-serif; font-size:28px; letter-spacing:0.03em; margin-bottom:14px; margin-top:28px; }
+
+  /* TODAY */
+  .today-date { padding:20px 24px 0; font-family:'DM Mono',monospace; font-size:11px; color:var(--dim); letter-spacing:0.1em; }
+  .streak-bar { margin:20px 24px 0; background:var(--grey); border:1px solid #222; border-radius:10px; padding:16px 18px; display:flex; align-items:center; justify-content:space-between; }
+  .streak-label { font-family:'DM Mono',monospace; font-size:10px; letter-spacing:0.12em; color:var(--muted); text-transform:uppercase; }
+  .streak-num { font-family:'Bebas Neue',sans-serif; font-size:36px; color:var(--orange); line-height:1; }
+  .streak-dots { display:flex; gap:5px; margin-top:8px; }
+  .s-dot { width:8px; height:8px; border-radius:50%; background:#2a2a2a; }
+  .s-dot.on { background:var(--orange); }
+
+  .phase-nudge { margin:16px 24px 0; background:rgba(232,82,26,0.07); border:1px solid rgba(232,82,26,0.2); border-radius:10px; padding:14px 16px; }
+  .phase-nudge-label { font-family:'DM Mono',monospace; font-size:9px; letter-spacing:0.12em; color:var(--orange); text-transform:uppercase; margin-bottom:6px; }
+  .phase-nudge-text { font-size:13px; color:#bbb; line-height:1.6; }
+
+  .check-section { padding:20px 24px 0; }
+  .checks { display:flex; flex-direction:column; gap:8px; }
+  .check-item { display:flex; align-items:flex-start; gap:14px; padding:14px 16px; background:var(--grey); border-radius:10px; border:1px solid #222; cursor:pointer; -webkit-user-select:none; transition:border-color 0.15s; }
+  .check-item.done { border-color:var(--orange); background:rgba(232,82,26,0.06); }
+  .check-box { width:20px; height:20px; border-radius:6px; border:1.5px solid #444; flex-shrink:0; margin-top:2px; display:flex; align-items:center; justify-content:center; transition:all 0.15s; }
+  .check-item.done .check-box { background:var(--orange); border-color:var(--orange); }
+  .check-box svg { display:none; }
+  .check-item.done .check-box svg { display:block; }
+  .check-content { flex:1; }
+  .check-text { font-size:14px; line-height:1.4; color:#bbb; margin-bottom:3px; }
+  .check-item.done .check-text { color:var(--cream); }
+  .check-why { font-size:12px; color:#555; line-height:1.5; font-style:italic; }
+  .check-item.done .check-why { color:#777; }
+
+  .log-section { padding:20px 24px 0; }
+  .log-prompt { font-size:13px; color:var(--muted); margin-bottom:10px; line-height:1.6; }
+  textarea { width:100%; background:var(--grey); border:1px solid #222; border-radius:10px; color:var(--cream); font-family:'DM Sans',sans-serif; font-size:14px; font-weight:300; line-height:1.6; padding:14px 16px; resize:none; outline:none; min-height:90px; -webkit-appearance:none; transition:border-color 0.2s; }
+  textarea::placeholder { color:#444; }
+  textarea:focus { border-color:var(--orange); }
+  .save-btn { width:100%; margin-top:10px; padding:14px; background:var(--orange); color:white; border:none; border-radius:10px; font-family:'Bebas Neue',sans-serif; font-size:18px; letter-spacing:0.08em; cursor:pointer; transition:opacity 0.15s; }
+  .save-btn:active { opacity:0.8; }
+  .saved-note { background:var(--grey); border:1px solid #222; border-radius:10px; padding:14px 16px; font-size:14px; color:#bbb; line-height:1.6; white-space:pre-wrap; word-break:break-word; }
+  .edit-link { font-family:'DM Mono',monospace; font-size:10px; color:var(--orange); letter-spacing:0.1em; text-transform:uppercase; background:none; border:none; cursor:pointer; margin-top:6px; padding:0; display:block; }
+
+  /* LADDER */
+  .ladder-wrap { padding:20px 24px 0; }
+  .ladder-item { display:flex; gap:16px; align-items:flex-start; padding:16px; background:var(--grey); border:1px solid #1e1e1e; border-radius:10px; margin-bottom:10px; cursor:pointer; position:relative; overflow:hidden; transition:border-color 0.15s; }
+  .ladder-item.completed { border-color:var(--orange); }
+  .ladder-item.completed::before { content:''; position:absolute; inset:0; background:rgba(232,82,26,0.04); pointer-events:none; }
+  .l-score { font-family:'Bebas Neue',sans-serif; font-size:32px; line-height:1; color:var(--orange); opacity:0.5; width:28px; flex-shrink:0; }
+  .ladder-item.completed .l-score { opacity:1; }
+  .l-content { flex:1; }
+  .l-title { font-size:14px; font-weight:500; color:var(--cream); margin-bottom:4px; }
+  .l-desc { font-size:13px; color:var(--muted); line-height:1.55; }
+  .l-why { font-size:12px; color:#444; line-height:1.5; margin-top:6px; font-style:italic; }
+  .l-check { width:22px; height:22px; border-radius:50%; border:1.5px solid #444; flex-shrink:0; display:flex; align-items:center; justify-content:center; margin-top:2px; }
+  .ladder-item.completed .l-check { background:var(--orange); border-color:var(--orange); }
+  .l-check svg { display:none; }
+  .ladder-item.completed .l-check svg { display:block; }
+  .ladder-note { margin:0 24px 20px; font-size:12px; color:#444; font-style:italic; text-align:center; }
+  .ladder-section-head { padding:0 24px; margin-bottom:8px; margin-top:4px; font-family:'DM Mono',monospace; font-size:9px; letter-spacing:0.12em; color:var(--dim); text-transform:uppercase; }
+
+  /* HISTORY */
+  .history-wrap { padding:20px 24px 0; }
+  .history-entry { margin-bottom:16px; border:1px solid #1e1e1e; border-radius:10px; overflow:hidden; }
+  .history-date { background:#141414; padding:10px 16px; font-family:'DM Mono',monospace; font-size:10px; letter-spacing:0.1em; color:var(--orange); text-transform:uppercase; }
+  .history-fields { padding:12px 16px; display:flex; flex-direction:column; gap:10px; }
+  .history-field-label { font-size:10px; font-family:'DM Mono',monospace; color:var(--dim); letter-spacing:0.1em; text-transform:uppercase; margin-bottom:3px; }
+  .history-field-text { font-size:13px; color:#999; line-height:1.6; white-space:pre-wrap; word-break:break-word; }
+  .empty-state { text-align:center; padding:60px 24px; color:var(--dim); font-size:14px; line-height:1.7; }
+  .empty-state .e-icon { font-size:36px; margin-bottom:16px; display:block; }
+
+  /* CALENDAR */
+  .cal-wrap { padding:20px 24px 0; }
+  .plan-progress { background:var(--grey); border:1px solid #222; border-radius:10px; padding:16px 18px; margin-bottom:16px; }
+  .plan-progress-top { display:flex; justify-content:space-between; align-items:flex-end; margin-bottom:12px; }
+  .pp-label { font-family:'DM Mono',monospace; font-size:10px; color:var(--muted); letter-spacing:0.12em; text-transform:uppercase; }
+  .pp-day { font-family:'Bebas Neue',sans-serif; font-size:40px; color:var(--orange); line-height:1; }
+  .progress-track { height:4px; background:#2a2a2a; border-radius:2px; overflow:hidden; margin-bottom:8px; }
+  .progress-fill { height:100%; background:var(--orange); border-radius:2px; transition:width 0.4s; }
+  .pp-phase-label { font-size:12px; color:var(--muted); }
+  .pp-phase-label span { color:var(--cream); }
+
+  /* PHASE BREAKDOWN CARDS */
+  .phase-breakdown { margin-bottom:16px; }
+  .pb-label { font-family:'DM Mono',monospace; font-size:10px; color:var(--orange); letter-spacing:0.12em; text-transform:uppercase; margin-bottom:10px; }
+  .pb-card { border:1px solid #1e1e1e; border-radius:10px; overflow:hidden; margin-bottom:8px; }
+  .pb-card.current { border-color:rgba(232,82,26,0.4); }
+  .pb-card-header { padding:12px 16px; background:#141414; display:flex; align-items:center; justify-content:space-between; gap:12px; }
+  .pb-card.current .pb-card-header { background:rgba(232,82,26,0.08); }
+  .pb-card-left { display:flex; align-items:center; gap:12px; flex:1; min-width:0; }
+  .pb-phase-num { font-family:'Bebas Neue',sans-serif; font-size:22px; color:var(--orange); opacity:0.4; line-height:1; flex-shrink:0; }
+  .pb-card.current .pb-phase-num { opacity:1; }
+  .pb-card.done .pb-phase-num { opacity:0.2; }
+  .pb-card-name { font-family:'Bebas Neue',sans-serif; font-size:16px; letter-spacing:0.04em; color:var(--cream); white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
+  .pb-card.done .pb-card-name { color:#444; }
+  .pb-card-meta { text-align:right; flex-shrink:0; }
+  .pb-weeks { font-family:'DM Mono',monospace; font-size:9px; color:var(--orange); letter-spacing:0.1em; text-transform:uppercase; }
+  .pb-card.done .pb-weeks { color:#333; }
+  .pb-days { font-size:11px; color:var(--dim); margin-top:2px; font-family:'DM Mono',monospace; }
+  .pb-bar-wrap { height:3px; background:#1a1a1a; }
+  .pb-bar { height:100%; background:var(--orange); opacity:0.3; }
+  .pb-card.current .pb-bar { opacity:1; }
+  .pb-card.done .pb-bar { opacity:0.15; }
+  .pb-body { padding:12px 16px; display:none; }
+  .pb-card.current .pb-body { display:block; }
+  .pb-body-text { font-size:13px; color:#777; line-height:1.65; }
+  .pb-status-pill { font-family:'DM Mono',monospace; font-size:9px; letter-spacing:0.1em; text-transform:uppercase; padding:3px 8px; border-radius:20px; background:rgba(232,82,26,0.15); color:var(--orange); flex-shrink:0; }
+  .pb-card.done .pb-status-pill { background:#1a1a1a; color:#333; }
+
+  /* CALENDAR GRID */
+  .week-strip { margin-bottom:16px; }
+  .week-strip-label { font-family:'DM Mono',monospace; font-size:10px; color:var(--orange); letter-spacing:0.12em; text-transform:uppercase; margin-bottom:10px; }
+  .week-headers { display:grid; grid-template-columns:repeat(7,1fr); gap:4px; margin-bottom:4px; }
+  .week-header-cell { text-align:center; font-family:'DM Mono',monospace; font-size:9px; color:var(--dim); letter-spacing:0.08em; }
+  .week-row { display:grid; grid-template-columns:repeat(7,1fr); gap:4px; margin-bottom:4px; }
+  .week-day-cell { aspect-ratio:1; border-radius:7px; display:flex; flex-direction:column; align-items:center; justify-content:center; background:#141414; border:1px solid #1e1e1e; }
+  .week-day-cell.logged { background:rgba(232,82,26,0.12); border-color:rgba(232,82,26,0.3); cursor:pointer; }
+  .week-day-cell.today { border-color:var(--orange); }
+  .week-day-cell.future { opacity:0.25; }
+  .week-day-cell.outside-plan { opacity:0.1; }
+  .wdc-num { font-family:'Bebas Neue',sans-serif; font-size:15px; line-height:1; color:var(--cream); }
+  .week-day-cell.today .wdc-num { color:var(--orange); }
+  .wdc-dot { width:4px; height:4px; border-radius:50%; background:var(--orange); margin-top:2px; }
+
+  /* phase colour bands on calendar */
+  .week-day-cell.ph-1 { border-bottom:2px solid rgba(232,82,26,0.25); }
+  .week-day-cell.ph-2 { border-bottom:2px solid rgba(100,160,232,0.25); }
+  .week-day-cell.ph-3 { border-bottom:2px solid rgba(80,200,140,0.25); }
+  .week-day-cell.ph-4 { border-bottom:2px solid rgba(200,160,60,0.25); }
+  .week-day-cell.today.ph-1,.week-day-cell.today.ph-2,.week-day-cell.today.ph-3,.week-day-cell.today.ph-4 { border-color:var(--orange); border-bottom-color:var(--orange); }
+
+  .cal-legend { display:flex; flex-wrap:wrap; gap:10px; margin-bottom:16px; }
+  .cal-legend-item { display:flex; align-items:center; gap:6px; font-family:'DM Mono',monospace; font-size:9px; color:var(--dim); letter-spacing:0.08em; text-transform:uppercase; }
+  .cal-legend-dot { width:10px; height:10px; border-radius:3px; flex-shrink:0; }
+
+  /* RESTART */
+  .restart-section { margin-bottom:24px; background:#0f0f0f; border:1px solid #1e1e1e; border-radius:10px; padding:20px 18px; }
+  .restart-section-label { font-family:'DM Mono',monospace; font-size:10px; color:var(--dim); letter-spacing:0.12em; text-transform:uppercase; margin-bottom:8px; }
+  .restart-section p { font-size:13px; color:#555; line-height:1.6; margin-bottom:14px; }
+  .restart-btn { width:100%; padding:13px; background:transparent; color:#c0392b; border:1px solid rgba(192,57,43,0.3); border-radius:10px; font-family:'Bebas Neue',sans-serif; font-size:16px; letter-spacing:0.08em; cursor:pointer; }
+  .restart-btn:active { background:rgba(192,57,43,0.1); }
+
+  /* PLAN */
+  .plan-wrap { padding:20px 24px 0; }
+  .plan-phase { margin-bottom:16px; border:1px solid #1e1e1e; border-radius:10px; overflow:hidden; }
+  .plan-phase-header { padding:16px 18px; background:#141414; display:flex; justify-content:space-between; align-items:center; cursor:pointer; }
+  .plan-phase-title { font-family:'Bebas Neue',sans-serif; font-size:20px; letter-spacing:0.04em; }
+  .plan-phase-body { padding:16px 18px; display:none; }
+  .plan-phase-body.open { display:block; }
+  .plan-task { margin-bottom:14px; padding-bottom:14px; border-bottom:1px solid #1a1a1a; }
+  .plan-task:last-child { border-bottom:none; margin-bottom:0; padding-bottom:0; }
+  .plan-task-title { font-size:13px; font-weight:500; color:var(--cream); margin-bottom:6px; display:flex; align-items:center; gap:8px; }
+  .plan-task-title::before { content:''; width:5px; height:5px; border-radius:50%; background:var(--orange); flex-shrink:0; }
+  .plan-task p { font-size:13px; color:var(--muted); line-height:1.65; padding-left:13px; }
+  .plan-task .why { font-size:12px; color:#444; font-style:italic; line-height:1.5; padding-left:13px; margin-top:5px; }
+  .chevron { transition:transform 0.2s; color:var(--dim); }
+  .plan-phase-header.open .chevron { transform:rotate(180deg); }
+  .truth-card { background:var(--grey); border:1px solid #1e1e1e; border-radius:10px; padding:16px 18px; margin-bottom:10px; display:flex; gap:14px; align-items:flex-start; }
+  .truth-n { font-family:'Bebas Neue',sans-serif; font-size:30px; color:var(--orange); opacity:0.3; line-height:1; flex-shrink:0; }
+  .truth-text { font-size:13px; color:var(--muted); line-height:1.65; }
+  .truth-text strong { color:var(--cream); font-weight:500; }
+
+  /* MODALS */
+  .modal-overlay { position:fixed; inset:0; background:rgba(0,0,0,0.75); z-index:100; display:none; align-items:flex-end; justify-content:center; }
+  .modal-overlay.open { display:flex; }
+  .modal { background:#111; border:1px solid #2a2a2a; border-radius:16px 16px 0 0; width:100%; max-width:480px; max-height:72vh; overflow-y:auto; padding:24px 24px calc(24px + var(--safe-bottom)); -webkit-overflow-scrolling:touch; }
+  .modal-handle { width:36px; height:4px; background:#333; border-radius:2px; margin:0 auto 20px; }
+  .modal-date { font-family:'DM Mono',monospace; font-size:10px; color:var(--orange); letter-spacing:0.12em; text-transform:uppercase; margin-bottom:4px; }
+  .modal-title { font-family:'Bebas Neue',sans-serif; font-size:28px; margin-bottom:16px; }
+  .modal-field { margin-bottom:16px; }
+  .modal-field-label { font-family:'DM Mono',monospace; font-size:10px; color:var(--dim); letter-spacing:0.1em; text-transform:uppercase; margin-bottom:6px; }
+  .modal-field-text { font-size:14px; color:#aaa; line-height:1.6; white-space:pre-wrap; word-break:break-word; background:var(--grey); border:1px solid #222; border-radius:8px; padding:12px 14px; }
+  .modal-empty { font-size:14px; color:#444; font-style:italic; }
+  .modal-close { width:100%; margin-top:8px; padding:14px; background:#1a1a1a; color:var(--muted); border:1px solid #2a2a2a; border-radius:10px; font-family:'Bebas Neue',sans-serif; font-size:16px; letter-spacing:0.08em; cursor:pointer; }
+
+  .confirm-overlay { position:fixed; inset:0; background:rgba(0,0,0,0.88); z-index:200; display:none; align-items:center; justify-content:center; padding:24px; }
+  .confirm-overlay.open { display:flex; }
+  .confirm-box { background:#151515; border:1px solid #2a2a2a; border-radius:16px; padding:28px 24px; width:100%; max-width:340px; text-align:center; }
+  .confirm-icon { font-size:32px; margin-bottom:14px; display:block; }
+  .confirm-title { font-family:'Bebas Neue',sans-serif; font-size:26px; margin-bottom:10px; }
+  .confirm-body { font-size:13px; color:var(--muted); line-height:1.65; margin-bottom:24px; }
+  .confirm-body strong { color:var(--cream); }
+  .confirm-btns { display:flex; flex-direction:column; gap:10px; }
+  .confirm-yes { padding:14px; background:#c0392b; color:white; border:none; border-radius:10px; font-family:'Bebas Neue',sans-serif; font-size:18px; letter-spacing:0.08em; cursor:pointer; }
+  .confirm-no { padding:14px; background:transparent; color:var(--muted); border:1px solid #2a2a2a; border-radius:10px; font-family:'Bebas Neue',sans-serif; font-size:18px; letter-spacing:0.08em; cursor:pointer; }
+
+  .toast { position:fixed; bottom:calc(var(--tab-h) + 16px); left:50%; transform:translateX(-50%) translateY(10px); background:var(--orange); color:white; font-family:'DM Mono',monospace; font-size:11px; letter-spacing:0.1em; text-transform:uppercase; padding:10px 20px; border-radius:20px; opacity:0; transition:all 0.3s; pointer-events:none; z-index:300; white-space:nowrap; }
+  .toast.show { opacity:1; transform:translateX(-50%) translateY(0); }
+  ::-webkit-scrollbar { display:none; }
+</style>
+</head>
+<body>
+<div id="app">
+
+  <!-- TODAY -->
+  <div class="screen active" id="screen-today">
+    <div class="page-header">
+      <div class="page-label">Daily Check-in</div>
+      <div class="page-title">TODAY</div>
+    </div>
+    <div class="today-date" id="today-date"></div>
+    <div class="streak-bar">
+      <div>
+        <div class="streak-label">Day Streak</div>
+        <div class="streak-num" id="streak-num">0</div>
+      </div>
+      <div>
+        <div class="streak-label" style="text-align:right;margin-bottom:8px">Last 7 days</div>
+        <div class="streak-dots" id="streak-dots"></div>
+      </div>
+    </div>
+    <div class="phase-nudge" id="phase-nudge">
+      <div class="phase-nudge-label" id="nudge-phase"></div>
+      <div class="phase-nudge-text" id="nudge-text"></div>
+    </div>
+    <div class="check-section">
+      <div class="section-label" style="margin-top:20px">Tonight's Reps</div>
+      <div class="checks" id="daily-checks"></div>
+    </div>
+    <div class="log-section">
+      <div class="section-label" style="margin-top:20px">Evening Reflection</div>
+      <div class="log-prompt">What happened today? Did the catastrophe you feared actually happen? Be specific — your brain needs this evidence.</div>
+      <div id="evening-wrap"></div>
+    </div>
+    <div class="log-section" style="padding-top:20px">
+      <div class="section-label">Anxiety Log</div>
+      <div class="log-prompt">Any moment today where you felt judged or self-conscious? Write what you did or didn't do, who was there, and what you imagined they thought.</div>
+      <div id="anxiety-wrap"></div>
+    </div>
+    <div class="log-section" style="padding-top:20px;padding-bottom:8px">
+      <div class="section-label">Tomorrow Morning</div>
+      <div class="log-prompt">One situation coming up where you might feel the pull of judgment. Name it now so it doesn't catch you off guard.</div>
+      <div id="morning-wrap"></div>
+    </div>
+  </div>
+
+  <!-- LADDER -->
+  <div class="screen" id="screen-ladder">
+    <div class="page-header">
+      <div class="page-label">Exposure Ladder</div>
+      <div class="page-title">THE<br>LADDER</div>
+      <div class="page-sub">Since you can handle small situations, you start from Step 3. Work upward — only move to the next step when the anxiety on the current one has dropped by at least half. Tap any step to mark it done.</div>
+    </div>
+    <div class="ladder-wrap" id="ladder-wrap"></div>
+    <div class="ladder-note">The goal isn't to feel calm. It's to stay long enough for the anxiety to peak and drop on its own.</div>
+  </div>
+
+  <!-- HISTORY -->
+  <div class="screen" id="screen-history">
+    <div class="page-header">
+      <div class="page-label">Evidence File</div>
+      <div class="page-title">YOUR<br>LOG</div>
+      <div class="page-sub">Every entry you've saved. This is proof accumulating against the old story. Scroll back on hard days.</div>
+    </div>
+    <div class="history-wrap" id="history-wrap"></div>
+  </div>
+
+  <!-- CALENDAR -->
+  <div class="screen" id="screen-calendar">
+    <div class="page-header">
+      <div class="page-label">Your Journey</div>
+      <div class="page-title">CALENDAR</div>
+      <div class="page-sub">Track where you are. Tap orange days to read your entries.</div>
+    </div>
+    <div class="cal-wrap" id="cal-wrap"></div>
+  </div>
+
+  <!-- PLAN -->
+  <div class="screen" id="screen-plan">
+    <div class="page-header">
+      <div class="page-label">The Plan</div>
+      <div class="page-title">12<br>WEEKS</div>
+      <div class="page-sub">Tap each phase to read what you should be doing and why.</div>
+    </div>
+    <div class="plan-wrap" id="plan-wrap"></div>
+  </div>
+
+  <nav>
+    <button class="tab active" onclick="switchTab('today',this)">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/></svg>
+      <span>Today</span>
+    </button>
+    <button class="tab" onclick="switchTab('ladder',this)">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><line x1="8" y1="6" x2="21" y2="6"/><line x1="8" y1="12" x2="21" y2="12"/><line x1="8" y1="18" x2="21" y2="18"/><line x1="3" y1="6" x2="3.01" y2="6"/><line x1="3" y1="12" x2="3.01" y2="12"/><line x1="3" y1="18" x2="3.01" y2="18"/></svg>
+      <span>Ladder</span>
+    </button>
+    <button class="tab" onclick="switchTab('history',this)">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/><line x1="16" y1="13" x2="8" y2="13"/><line x1="16" y1="17" x2="8" y2="17"/></svg>
+      <span>Log</span>
+    </button>
+    <button class="tab" onclick="switchTab('calendar',this)">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="4" width="18" height="18" rx="2" ry="2"/><line x1="16" y1="2" x2="16" y2="6"/><line x1="8" y1="2" x2="8" y2="6"/><line x1="3" y1="10" x2="21" y2="10"/></svg>
+      <span>Calendar</span>
+    </button>
+    <button class="tab" onclick="switchTab('plan',this)">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2"/></svg>
+      <span>Plan</span>
+    </button>
+  </nav>
+</div>
+
+<!-- Day modal -->
+<div class="modal-overlay" id="day-modal" onclick="handleModalOverlayClick(event)">
+  <div class="modal" id="day-modal-inner">
+    <div class="modal-handle"></div>
+    <div class="modal-date" id="modal-date"></div>
+    <div class="modal-title" id="modal-title"></div>
+    <div id="modal-fields"></div>
+    <button class="modal-close" onclick="closeDayModal()">Close</button>
+  </div>
+</div>
+
+<!-- Restart confirm -->
+<div class="confirm-overlay" id="confirm-overlay" onclick="handleConfirmOverlayClick(event)">
+  <div class="confirm-box">
+    <span class="confirm-icon">⚠️</span>
+    <div class="confirm-title">RESTART THE PLAN?</div>
+    <div class="confirm-body">Resets your plan start date to today and clears ladder progress.<br><br><strong>Your daily logs and journal entries are kept.</strong></div>
+    <div class="confirm-btns">
+      <button class="confirm-yes" onclick="confirmRestart()">Yes, Restart</button>
+      <button class="confirm-no" onclick="closeConfirm()">Cancel</button>
+    </div>
+  </div>
+</div>
+
+<div class="toast" id="toast"></div>
+
+<script>
+// ─── PLAN DATA ───────────────────────────────────────────
+const PLAN_TOTAL_DAYS = 84;
+
+const PHASE_DEFS = [
+  { num:'01', label:'Know Your Enemy',   weeks:'1–2',  days:'Days 1–14',  startDay:1,  endDay:14,  color:'rgba(232,82,26,0.6)',
+    intro:'You cannot change something you have not mapped. Before any action, spend two weeks observing exactly when and where the anxiety shows up. Most people skip this and wonder why nothing changes.',
+    focus:'Observation and inventory. No action required yet — just honest attention.' },
+  { num:'02', label:'Start the Erosion', weeks:'3–5',  days:'Days 15–35', startDay:15, endDay:35,  color:'rgba(100,160,232,0.6)',
+    intro:'The anxiety is kept alive by avoidance. Every time you leave a situation while still anxious, you confirm to your nervous system that the threat was real. This phase is about staying — not being calm, just not leaving.',
+    focus:'Exposure ladder, bottom to middle. One new step per week minimum.' },
+  { num:'03', label:'Build the Real You', weeks:'6–8',  days:'Days 36–56', startDay:36, endDay:56,  color:'rgba(80,200,140,0.6)',
+    intro:"Exposure deals with the surface behaviour. This phase goes after the root: the belief that you're not interesting or worth being around. You build a new self-concept through action, not thinking. You do things that a self-assured person would do — before you feel like one. The feeling follows.",
+    focus:'Identity work alongside continued exposure. Get absorbed in something. Expand the basketball circle.' },
+  { num:'04', label:'Make It Default',   weeks:'9–12', days:'Days 57–84', startDay:57, endDay:84,  color:'rgba(200,160,60,0.6)',
+    intro:'By now the anxiety should be arriving later and dropping faster in lower-stakes situations. This phase locks it in. You hit the harder end of the ladder, introduce yourself to someone new, and start auditing whether the people around you are helping or hurting.',
+    focus:'Top of the ladder. Review your Week 1 notes. Document what has shifted.' },
+];
+
+const LADDER_DATA = [
+  { score:3, title:'Quiet shop alone',             desc:'Walk through a quiet shop with no plan to buy anything. Just be there.', why:'This builds the basic evidence that existing alone in a space without a purpose is survivable. Your nervous system needs repetition of this before crowds.' },
+  { score:4, title:'Café sit — 15 minutes',        desc:'Sit alone in a café for 15 minutes. Phone in your pocket the whole time.', why:'No phone removes the escape hatch. Sitting without a prop is the actual exposure. The discomfort is the point — stay through it.' },
+  { score:5, title:'Walk a busy area solo',         desc:'Walk through a moderately busy area with a destination in mind. You are going somewhere — that gives you a role.', why:"Having a destination reduces the 'why is this person just standing here' fear your brain generates. It's a stepping stone to being in crowds with no task." },
+  { score:5, title:'Wear the thing',                desc:'Wear whatever you have been second-guessing. Start somewhere low-stakes. Notice nothing catastrophic happens.', why:'Every time you dress how you actually want and survive, you chip away at the belief that your appearance is under threat.' },
+  { score:6, title:'Busy space — 20 minutes',      desc:'Stand or sit alone in a genuinely busy public space for 20 minutes. No task. No phone.', why:'This is your main wall. The goal is to stay long enough for the anxiety to peak and then start dropping on its own. That drop is what teaches your brain the situation is safe.' },
+  { score:7, title:'Eat alone at a restaurant',    desc:'A real sit-down place, not fast food. Order, eat, leave. You are allowed to be there.', why:'Eating alone removes every social prop. It feels exposing because it is. Do it once and the next time is already easier.' },
+  { score:7, title:'Expand basketball circle',     desc:'Suggest something low-stakes with teammates outside practice — food, watching a game, anything.', why:"You already have proof of connection with these people. Using it outside the structured context is the safest way to practice being yourself socially without starting from zero." },
+  { score:8, title:'Express a real opinion',       desc:'Have one genuine disagreement with someone you trust. Let the relationship survive your real view.', why:'The core fear is that your real self will be rejected. A small disagreement that the relationship survives is direct evidence against that belief.' },
+  { score:9, title:'Introduce yourself to someone new', desc:"One conversation with someone you don't know — teammate's friend, someone in class, anyone.", why:'This is the integration step. Everything below it was practice for this.' },
+];
+
+const DAILY_CHECKS = [
+  { text:'Did one exposure from the ladder', why:'One rep a day is what builds the pattern. Skipping feels like relief but confirms the anxiety.' },
+  { text:'Phone stayed in pocket in at least one public moment', why:'Using your phone in uncomfortable situations is a safety behaviour. It keeps the anxiety alive by signalling to your brain that the situation requires protection.' },
+  { text:'Redirected attention outward at least once', why:'The anxiety compounds when attention turns inward. Noticing what is around you instead of monitoring yourself breaks the loop.' },
+  { text:'Expressed one genuine opinion or preference', why:'Small acts of honesty with people you know build the muscle for being real in higher-stakes situations.' },
+];
+
+const PHASE_NUDGES = [
+  { phase:'Phase 01', text:'This week: keep a note on your phone. Every time you feel the pull of judgment, log what happened, who was there, and what you imagined they thought. Do not analyse it yet. Just collect.' },
+  { phase:'Phase 02', text:'This week: pick the next step on your ladder and do it once. Stay through the peak of anxiety before you leave. That drop is the actual lesson.' },
+  { phase:'Phase 03', text:'This week: pick one thing to get genuinely absorbed in — not to perform it, just for yourself. And do at least one thing alone in public that you would normally avoid.' },
+  { phase:'Phase 04', text:'This week: hit the hardest step on your ladder. Do it twice. Then review your very first log entries and compare to now.' },
+];
+
+const PLAN_DATA = [
+  { phase:'01', title:'KNOW YOUR ENEMY', weeks:'Weeks 1–2',
+    intro:'You cannot change something you have not mapped. Two weeks of honest observation will tell you more than a year of guessing.',
+    tasks:[
+      { title:'The Phone Note', body:'Every time you feel the pull of judgment: write what you did or did not do, who was around, and what you imagined they thought. Do not analyse it. Just log it.', why:'By end of week you will see a pattern — probably 2-3 specific scenarios doing 80% of the damage. You cannot target what you cannot see.' },
+      { title:'The Origin Question', body:"Where did 'I'm not interesting / not cool' come from? A specific year, a specific person, a specific group? Sit with it once.", why:"It's a conclusion you drew at some point from limited information — not a permanent fact about you. Knowing its origin helps you stop treating it like one." },
+      { title:'The Honest Inventory', body:'Write down three things you are genuinely good at or curious about. Basketball is already one. You have a team that respects you, you perform under pressure, you show up. Find two more.', why:"You are almost certainly running a biased inventory — heavy on negatives, light on positives. This isn't positive thinking. It's accuracy." },
+    ]
+  },
+  { phase:'02', title:'START THE EROSION', weeks:'Weeks 3–5',
+    intro:'Anxiety is maintained by avoidance. Stay through the peak — that is what teaches your nervous system the situation is safe.',
+    tasks:[
+      { title:'The Attention Redirect', body:'Before entering any public space, give yourself one external observational task: count people wearing a specific colour, notice what music is playing, find the oldest person in the room.', why:"When attention turns inward you start monitoring yourself like a CCTV camera. An external task gives attention somewhere else to go — outward instead of inward." },
+      { title:'The No-Phone Rule', body:'Phone goes in your pocket the moment you enter a public space. Keep it there for the duration.', why:'Reaching for your phone is a safety behaviour. It relieves the anxiety in the short term but confirms to your brain that the situation was genuinely threatening. You need to sit in the discomfort without an escape hatch.' },
+      { title:'Work the Ladder', body:'One exposure per week minimum, starting from wherever feels like a 4-5 on your anxiety scale. Move up only when the anxiety on the current step has dropped by at least half.', why:'Starting too high means you get flooded, survive by luck, and learn nothing durable. The graded approach is how systematic desensitisation actually works.' },
+    ]
+  },
+  { phase:'03', title:'BUILD THE REAL YOU', weeks:'Weeks 6–8',
+    intro:"Exposure fixes the behaviour. This phase fixes the root — the self-concept. You build it through action, not thinking.",
+    tasks:[
+      { title:'Get Absorbed in Something', body:'Pick one thing to genuinely get into — a skill, a subject, a creative thing, anything where you lose track of time. Not to have a talking point. Just for you.', why:"People who are not worried about seeming interesting are usually just absorbed in something. That internal shift — from 'how am I coming across' to 'here's what I'm into' — is visible to others without you doing anything deliberate." },
+      { title:'Do More Things Alone in Public', body:'A film alone. A bookshop with no time pressure. A second restaurant sit. Each one you do and survive is evidence filed against the story that you need to justify your presence.', why:'The story says you need a group to legitimise being somewhere. Each solo act directly contradicts it.' },
+      { title:'Expand the Basketball Circle', body:'Suggest something low-stakes with teammates outside of practice. You already have proof of connection there. Use it.', why:"You are comfortable on the court because you have a defined role and a track record. Letting those relationships deepen outside the structured context is the safest social practice available to you — it's not starting from zero." },
+    ]
+  },
+  { phase:'04', title:'MAKE IT DEFAULT', weeks:'Weeks 9–12',
+    intro:'Lower-stakes situations should feel lighter by now. This phase pushes higher and locks in the pattern.',
+    tasks:[
+      { title:'Week 9 — Hit the Top', body:'Take on the hardest step on your ladder. Do it twice this week, not once.', why:'One attempt can be dismissed as a fluke. Twice starts to feel like capability.' },
+      { title:'Week 10 — One New Person', body:'Introduce yourself to one person you do not know. One conversation. That is the entire goal.', why:'Everything below this was practice for this moment. You have more tools now than you did at the start.' },
+      { title:'Week 11 — Audit Your Environment', body:'Look honestly at the people you spend the most time with. Are they making you feel like enough?', why:"You cannot out-work an environment that keeps reinforcing the old story. This isn't about cutting people off — it's about being honest about the effect proximity has on you." },
+      { title:'Week 12 — The Compare', body:'Go back to your very first anxiety log entries from Week 1. Read them. Write down what has shifted.', why:"The change will not be total — but it will be real. Seeing your own evidence in writing is one of the most effective things you can do to consolidate it." },
+    ]
+  },
+];
+
+const TRUTHS = [
+  { n:1, strong:'The anxiety is a feedback loop, not a personality trait.', rest:' Attention turns inward, body responds, you notice the response, you worry about it being noticed. You break it by pointing attention outward. It is mechanical.' },
+  { n:2, strong:"'Not interesting / not cool' is a conclusion, not a fact.", rest:' You drew it at some point from limited information. The version of you that shows up every day to basketball practice and is respected by his teammates contradicts it directly.' },
+  { n:3, strong:"You don't think your way out. You act your way out.", rest:' The belief changes last. Lead with the behaviour and the feeling follows. Not immediately — but it follows.' },
+  { n:4, strong:'Most people are thinking about themselves, not you.', rest:' The audience you are performing for is mostly not watching. And the ones who are — their judgment is about their own insecurities, not an accurate read on you.' },
+  { n:5, strong:'If this feels genuinely stuck after 8 weeks of real effort, get a therapist.', rest:' Ask specifically for ACT or CBT. Not because something is wrong — some patterns have history behind them that exposure alone does not fully reach. It is the fastest available tool for exactly this.' },
+];
+
+// ─── STORAGE ─────────────────────────────────────────────
+function load(key, fallback) {
+  try { const v = localStorage.getItem(key); return v !== null ? JSON.parse(v) : fallback; }
+  catch(e) { return fallback; }
+}
+function save(key, val) {
+  try { localStorage.setItem(key, JSON.stringify(val)); } catch(e) {} 
+}
+
+// ─── DATE HELPERS ────────────────────────────────────────
+function todayKey() {
+  const d = new Date();
+  return d.getFullYear()+'-'+String(d.getMonth()+1).padStart(2,'0')+'-'+String(d.getDate()).padStart(2,'0');
+}
+function keyToDate(k) { return new Date(k+'T12:00:00'); }
+function dateToKey(d) {
+  return d.getFullYear()+'-'+String(d.getMonth()+1).padStart(2,'0')+'-'+String(d.getDate()).padStart(2,'0');
+}
+function getPlanStart() {
+  let s = load('plan-start-date', null);
+  if (!s) { s = todayKey(); save('plan-start-date', s); }
+  return s;
+}
+function getPlanDay() {
+  const start = keyToDate(getPlanStart());
+  const today = keyToDate(todayKey());
+  return Math.max(1, Math.floor((today - start) / 86400000) + 1);
+}
+function getCurrentPhase() {
+  const day = getPlanDay();
+  for (const ph of PHASE_DEFS) { if (day >= ph.startDay && day <= ph.endDay) return ph; }
+  return PHASE_DEFS[PHASE_DEFS.length - 1];
+}
+function getPhaseForDay(day) {
+  for (const ph of PHASE_DEFS) { if (day >= ph.startDay && day <= ph.endDay) return PHASE_DEFS.indexOf(ph); }
+  return -1;
+}
+function hasEntry(e) {
+  return e && (e.morning || e.evening || e.anxiety || (e.checks && e.checks.length > 0));
+}
+function escHtml(s) {
+  return String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');
+}
+
+// ─── TOAST ───────────────────────────────────────────────
+function showToast(msg) {
+  const t = document.getElementById('toast');
+  t.textContent = msg;
+  t.classList.add('show');
+  setTimeout(() => t.classList.remove('show'), 2200);
+}
+
+// ─── TABS ────────────────────────────────────────────────
+function switchTab(name, el) {
+  document.querySelectorAll('.screen').forEach(s => s.classList.remove('active'));
+  document.querySelectorAll('.tab').forEach(t => t.classList.remove('active'));
+  document.getElementById('screen-'+name).classList.add('active');
+  el.classList.add('active');
+  if (name === 'history') renderHistory();
+  if (name === 'calendar') renderCalendar();
+}
+
+// ─── TODAY ───────────────────────────────────────────────
+function initToday() {
+  const key = todayKey();
+  const d = new Date();
+  document.getElementById('today-date').textContent =
+    d.toLocaleDateString('en-US',{weekday:'long',month:'long',day:'numeric'}).toUpperCase();
+  renderStreak();
+  renderPhaseNudge();
+  renderChecks(key);
+  renderLogField('evening', key, 'evening-wrap');
+  renderLogField('anxiety',  key, 'anxiety-wrap');
+  renderLogField('morning', key, 'morning-wrap');
+}
+
+function renderPhaseNudge() {
+  const ph = getCurrentPhase();
+  const idx = PHASE_DEFS.indexOf(ph);
+  const nudge = PHASE_NUDGES[Math.min(idx, PHASE_NUDGES.length-1)];
+  document.getElementById('nudge-phase').textContent = ph.label + ' · ' + ph.weeks;
+  document.getElementById('nudge-text').textContent = nudge.text;
+}
+
+function renderStreak() {
+  const logs = load('all-logs', {});
+  let streak = 0;
+  let check = todayKey();
+  for (let i = 0; i < 400; i++) {
+    if (hasEntry(logs[check])) {
+      streak++;
+      const d = keyToDate(check); d.setDate(d.getDate()-1); check = dateToKey(d);
+    } else break;
+  }
+  document.getElementById('streak-num').textContent = streak;
+  const dotsEl = document.getElementById('streak-dots');
+  dotsEl.innerHTML = '';
+  for (let i = 6; i >= 0; i--) {
+    const d = new Date(); d.setDate(d.getDate()-i);
+    const k = dateToKey(d);
+    const dot = document.createElement('div');
+    dot.className = 's-dot'+(hasEntry(logs[k])?' on':'');
+    dotsEl.appendChild(dot);
+  }
+}
+
+function renderChecks(key) {
+  const logs = load('all-logs', {});
+  const checked = (logs[key] && logs[key].checks) || [];
+  const container = document.getElementById('daily-checks');
+  container.innerHTML = '';
+  DAILY_CHECKS.forEach((item, i) => {
+    const el = document.createElement('div');
+    el.className = 'check-item'+(checked.includes(i)?' done':'');
+    el.innerHTML = `<div class="check-box"><svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="white" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"/></svg></div><div class="check-content"><div class="check-text">${escHtml(item.text)}</div><div class="check-why">${escHtml(item.why)}</div></div>`;
+    el.onclick = () => toggleCheck(key, i);
+    container.appendChild(el);
+  });
+}
+
+function toggleCheck(key, idx) {
+  const logs = load('all-logs', {});
+  if (!logs[key]) logs[key] = {};
+  if (!logs[key].checks) logs[key].checks = [];
+  const arr = logs[key].checks;
+  const pos = arr.indexOf(idx);
+  if (pos === -1) { arr.push(idx); showToast('Logged ✓'); } else arr.splice(pos,1);
+  save('all-logs', logs);
+  renderChecks(key);
+  renderStreak();
+}
+
+function renderLogField(field, key, wrapperId) {
+  const logs = load('all-logs', {});
+  const val = (logs[key] && logs[key][field]) || '';
+  const wrap = document.getElementById(wrapperId);
+  if (!wrap) return;
+  if (val) {
+    wrap.innerHTML = `<div class="saved-note">${escHtml(val)}</div><button class="edit-link" onclick="editField('${field}','${key}','${wrapperId}')">Edit</button>`;
+  } else {
+    wrap.innerHTML = `<textarea id="ta-${field}" placeholder="Write here..." rows="3"></textarea><button class="save-btn" onclick="saveField('${field}','${key}','${wrapperId}')">Save</button>`;
+  }
+}
+
+function saveField(field, key, wrapperId) {
+  const ta = document.getElementById('ta-'+field);
+  if (!ta) return;
+  const val = ta.value.trim();
+  if (!val) return;
+  const logs = load('all-logs', {});
+  if (!logs[key]) logs[key] = {};
+  logs[key][field] = val;
+  save('all-logs', logs);
+  renderLogField(field, key, wrapperId);
+  renderStreak();
+  showToast('Saved');
+}
+
+function editField(field, key, wrapperId) {
+  const logs = load('all-logs', {});
+  const val = (logs[key] && logs[key][field]) || '';
+  const wrap = document.getElementById(wrapperId);
+  if (!wrap) return;
+  wrap.innerHTML = `<textarea id="ta-${field}" rows="3">${escHtml(val)}</textarea><button class="save-btn" onclick="saveField('${field}','${key}','${wrapperId}')">Save</button>`;
+  const ta = document.getElementById('ta-'+field);
+  if (ta) ta.focus();
+}
+
+// ─── LADDER ──────────────────────────────────────────────
+function initLadder() {
+  const completed = load('ladder-completed', []);
+  const wrap = document.getElementById('ladder-wrap');
+  wrap.innerHTML = '';
+  LADDER_DATA.forEach((item, i) => {
+    const done = completed.includes(i);
+    const el = document.createElement('div');
+    el.className = 'ladder-item'+(done?' completed':'');
+    el.innerHTML = `<div class="l-score">${item.score}</div><div class="l-content"><div class="l-title">${escHtml(item.title)}</div><div class="l-desc">${escHtml(item.desc)}</div><div class="l-why">${escHtml(item.why)}</div></div><div class="l-check"><svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="white" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"/></svg></div>`;
+    el.onclick = () => toggleLadder(i);
+    wrap.appendChild(el);
+  });
+}
+
+function toggleLadder(i) {
+  const completed = load('ladder-completed', []);
+  const pos = completed.indexOf(i);
+  if (pos === -1) { completed.push(i); showToast('Step marked done'); } else completed.splice(pos,1);
+  save('ladder-completed', completed);
+  initLadder();
+}
+
+// ─── HISTORY ─────────────────────────────────────────────
+function renderHistory() {
+  const logs = load('all-logs', {});
+  const wrap = document.getElementById('history-wrap');
+  const keys = Object.keys(logs).sort().reverse().filter(k => hasEntry(logs[k]));
+  if (!keys.length) {
+    wrap.innerHTML = `<div class="empty-state"><span class="e-icon">📋</span>No entries yet. Start logging tonight — this becomes your evidence file.</div>`;
+    return;
+  }
+  wrap.innerHTML = '';
+  keys.forEach(k => {
+    const entry = logs[k];
+    const d = keyToDate(k);
+    const dateStr = d.toLocaleDateString('en-US',{weekday:'short',month:'short',day:'numeric'}).toUpperCase();
+    let html = '';
+    if (entry.evening) html += `<div><div class="history-field-label">Evening</div><div class="history-field-text">${escHtml(entry.evening)}</div></div>`;
+    if (entry.anxiety) html += `<div><div class="history-field-label">Anxiety Log</div><div class="history-field-text">${escHtml(entry.anxiety)}</div></div>`;
+    if (entry.morning) html += `<div><div class="history-field-label">Tomorrow Prep</div><div class="history-field-text">${escHtml(entry.morning)}</div></div>`;
+    if (entry.checks && entry.checks.length) {
+      const names = entry.checks.map(i => DAILY_CHECKS[i] ? DAILY_CHECKS[i].text : '').filter(Boolean).join(', ');
+      if (names) html += `<div><div class="history-field-label">Reps Done</div><div class="history-field-text">${escHtml(names)}</div></div>`;
+    }
+    if (html) wrap.innerHTML += `<div class="history-entry"><div class="history-date">${dateStr}</div><div class="history-fields">${html}</div></div>`;
+  });
+  if (!wrap.innerHTML) wrap.innerHTML = `<div class="empty-state"><span class="e-icon">📋</span>No entries yet.</div>`;
+}
+
+// ─── CALENDAR ────────────────────────────────────────────
+function renderCalendar() {
+  const wrap = document.getElementById('cal-wrap');
+  wrap.innerHTML = '';
+  const logs = load('all-logs', {});
+  const today = todayKey();
+  const planStart = getPlanStart();
+  const planDay = getPlanDay();
+  const pct = Math.min(100, Math.round((planDay / PLAN_TOTAL_DAYS) * 100));
+  const phase = getCurrentPhase();
+
+  // Progress bar
+  const prog = document.createElement('div');
+  prog.className = 'plan-progress';
+  prog.innerHTML = `
+    <div class="plan-progress-top">
+      <div>
+        <div class="pp-label">Plan Progress</div>
+        <div class="pp-day">${Math.min(planDay,PLAN_TOTAL_DAYS)}<span style="font-size:18px;color:var(--dim)"> / ${PLAN_TOTAL_DAYS}</span></div>
+      </div>
+      <div style="text-align:right">
+        <div class="pp-label" style="margin-bottom:4px">Complete</div>
+        <div style="font-family:'Bebas Neue',sans-serif;font-size:32px;color:var(--orange);line-height:1">${pct}%</div>
+      </div>
+    </div>
+    <div class="progress-track"><div class="progress-fill" style="width:${pct}%"></div></div>
+    <div class="pp-phase-label">Currently in: <span>${phase.label} (${phase.weeks})</span></div>`;
+  wrap.appendChild(prog);
+
+  // Phase breakdown cards
+  const pb = document.createElement('div');
+  pb.className = 'phase-breakdown';
+  pb.innerHTML = '<div class="pb-label">Phase Breakdown</div>';
+
+  PHASE_DEFS.forEach((ph, idx) => {
+    const isCurrent = planDay >= ph.startDay && planDay <= ph.endDay;
+    const isDone = planDay > ph.endDay;
+    const totalPhaseDays = ph.endDay - ph.startDay + 1;
+    const fillPct = isCurrent
+      ? Math.round(((planDay - ph.startDay) / totalPhaseDays) * 100)
+      : isDone ? 100 : 0;
+    const statusLabel = isDone ? 'Done' : isCurrent ? 'Current' : 'Upcoming';
+
+    const card = document.createElement('div');
+    card.className = 'pb-card'+(isCurrent?' current':isDone?' done':'');
+    card.innerHTML = `
+      <div class="pb-card-header">
+        <div class="pb-card-left">
+          <div class="pb-phase-num">${ph.num}</div>
+          <div class="pb-card-name">${ph.label}</div>
+        </div>
+        <div class="pb-card-meta">
+          <div class="pb-weeks">Weeks ${ph.weeks}</div>
+          <div class="pb-days">${ph.days}</div>
+        </div>
+        <div class="pb-status-pill">${statusLabel}</div>
+      </div>
+      <div class="pb-bar-wrap"><div class="pb-bar" style="width:${fillPct}%"></div></div>
+      <div class="pb-body"><div class="pb-body-text">${escHtml(ph.focus)}</div></div>`;
+    pb.appendChild(card);
+  });
+  wrap.appendChild(pb);
+
+  // Calendar legend
+  const legend = document.createElement('div');
+  legend.className = 'cal-legend';
+  const legendItems = [
+    { color:'rgba(232,82,26,0.5)', label:'Phase 1' },
+    { color:'rgba(100,160,232,0.5)', label:'Phase 2' },
+    { color:'rgba(80,200,140,0.5)', label:'Phase 3' },
+    { color:'rgba(200,160,60,0.5)', label:'Phase 4' },
+    { color:'rgba(232,82,26,0.25)', label:'Logged' },
+  ];
+  legendItems.forEach(item => {
+    legend.innerHTML += `<div class="cal-legend-item"><div class="cal-legend-dot" style="background:${item.color}"></div>${item.label}</div>`;
+  });
+  wrap.appendChild(legend);
+
+  // Calendar grid
+  const planStartDate = keyToDate(planStart);
+  const planEndDate = new Date(planStartDate);
+  planEndDate.setDate(planEndDate.getDate() + PLAN_TOTAL_DAYS - 1);
+  const planEndKey = dateToKey(planEndDate);
+
+  const gridStart = new Date(planStartDate);
+  gridStart.setDate(gridStart.getDate() - gridStart.getDay());
+  const gridEnd = new Date(planEndDate);
+  gridEnd.setDate(gridEnd.getDate() + (6 - gridEnd.getDay()));
+
+  const calDiv = document.createElement('div');
+  calDiv.className = 'week-strip';
+  calDiv.innerHTML = '<div class="week-strip-label">Full 12-Week Calendar — tap orange to read entries</div><div class="week-headers"><div class="week-header-cell">Su</div><div class="week-header-cell">Mo</div><div class="week-header-cell">Tu</div><div class="week-header-cell">We</div><div class="week-header-cell">Th</div><div class="week-header-cell">Fr</div><div class="week-header-cell">Sa</div></div>';
+
+  let cur = new Date(gridStart);
+  while (cur <= gridEnd) {
+    const row = document.createElement('div');
+    row.className = 'week-row';
+    for (let d = 0; d < 7; d++) {
+      const k = dateToKey(cur);
+      const inPlan = k >= planStart && k <= planEndKey;
+      const isFuture = k > today;
+      const isToday = k === today;
+      const logged = inPlan && hasEntry(logs[k]);
+
+      // Get phase index for colour band
+      let phaseIdx = -1;
+      if (inPlan) {
+        const dayNum = Math.floor((keyToDate(k) - planStartDate) / 86400000) + 1;
+        phaseIdx = getPhaseForDay(dayNum);
+      }
+
+      let cls = 'week-day-cell';
+      if (!inPlan) cls += ' outside-plan';
+      else if (isFuture) cls += ' future';
+      if (logged) cls += ' logged';
+      if (isToday) cls += ' today';
+      if (phaseIdx >= 0) cls += ' ph-'+(phaseIdx+1);
+
+      const cell = document.createElement('div');
+      cell.className = cls;
+      cell.innerHTML = `<div class="wdc-num">${cur.getDate()}</div>${logged?'<div class="wdc-dot"></div>':''}`;
+      if (logged) {
+        const capturedKey = k;
+        cell.onclick = () => openDayModal(capturedKey);
+      }
+      row.appendChild(cell);
+      cur.setDate(cur.getDate()+1);
+    }
+    calDiv.appendChild(row);
+  }
+  wrap.appendChild(calDiv);
+
+  // Restart
+  const restartDiv = document.createElement('div');
+  restartDiv.className = 'restart-section';
+  restartDiv.innerHTML = `<div class="restart-section-label">Reset</div><p>Restart the 12-week plan from today. Your daily log entries are kept — only the plan start date and ladder progress reset.</p><button class="restart-btn" onclick="openConfirm()">Restart Plan from Today</button>`;
+  wrap.appendChild(restartDiv);
+}
+
+// ─── DAY MODAL ───────────────────────────────────────────
+function openDayModal(key) {
+  const logs = load('all-logs', {});
+  const entry = logs[key] || {};
+  const d = keyToDate(key);
+  const dateStr = d.toLocaleDateString('en-US',{weekday:'long',month:'long',day:'numeric'}).toUpperCase();
+  const planStartDate = keyToDate(getPlanStart());
+  const dayNum = Math.floor((keyToDate(key) - planStartDate) / 86400000) + 1;
+
+  document.getElementById('modal-date').textContent = dateStr;
+  document.getElementById('modal-title').textContent = 'DAY '+dayNum;
+
+  let html = '';
+  if (entry.evening) html += `<div class="modal-field"><div class="modal-field-label">Evening</div><div class="modal-field-text">${escHtml(entry.evening)}</div></div>`;
+  if (entry.anxiety) html += `<div class="modal-field"><div class="modal-field-label">Anxiety Log</div><div class="modal-field-text">${escHtml(entry.anxiety)}</div></div>`;
+  if (entry.morning) html += `<div class="modal-field"><div class="modal-field-label">Tomorrow Prep</div><div class="modal-field-text">${escHtml(entry.morning)}</div></div>`;
+  if (entry.checks && entry.checks.length) {
+    const names = entry.checks.map(i => DAILY_CHECKS[i] ? DAILY_CHECKS[i].text : '').filter(Boolean).join('\n');
+    if (names) html += `<div class="modal-field"><div class="modal-field-label">Reps Done</div><div class="modal-field-text">${escHtml(names)}</div></div>`;
+  }
+  if (!html) html = '<div class="modal-empty">No entries for this day.</div>';
+
+  document.getElementById('modal-fields').innerHTML = html;
+  document.getElementById('day-modal').classList.add('open');
+}
+
+function closeDayModal() { document.getElementById('day-modal').classList.remove('open'); }
+function handleModalOverlayClick(e) { if (e.target === document.getElementById('day-modal')) closeDayModal(); }
+
+// ─── RESTART ─────────────────────────────────────────────
+function openConfirm() { document.getElementById('confirm-overlay').classList.add('open'); }
+function closeConfirm() { document.getElementById('confirm-overlay').classList.remove('open'); }
+function handleConfirmOverlayClick(e) { if (e.target === document.getElementById('confirm-overlay')) closeConfirm(); }
+function confirmRestart() {
+  save('plan-start-date', todayKey());
+  save('ladder-completed', []);
+  closeConfirm();
+  showToast('Plan restarted from today');
+  initLadder();
+  renderCalendar();
+}
+
+// ─── PLAN ────────────────────────────────────────────────
+function initPlan() {
+  const wrap = document.getElementById('plan-wrap');
+  wrap.innerHTML = '';
+  PLAN_DATA.forEach(phase => {
+    const div = document.createElement('div');
+    div.className = 'plan-phase';
+    const tasksHTML = phase.tasks.map(t => `<div class="plan-task"><div class="plan-task-title">${escHtml(t.title)}</div><p>${escHtml(t.body)}</p><p class="why">Why: ${escHtml(t.why)}</p></div>`).join('');
+    div.innerHTML = `<div class="plan-phase-header" onclick="togglePhase(this)"><div><div style="font-family:'DM Mono',monospace;font-size:10px;color:var(--orange);letter-spacing:0.1em;margin-bottom:4px">PHASE ${phase.phase} · ${phase.weeks}</div><div class="plan-phase-title">${phase.title}</div></div><svg class="chevron" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="6 9 12 15 18 9"/></svg></div><div class="plan-phase-body"><p style="font-size:13px;color:var(--dim);font-style:italic;margin-bottom:16px;line-height:1.6">${escHtml(phase.intro)}</p>${tasksHTML}</div>`;
+    wrap.appendChild(div);
+  });
+
+  const daily = document.createElement('div');
+  daily.innerHTML = `<div class="section-title">DAILY PRACTICE</div>${[
+    ['Evening — First','Reflect on what happened today and whether the feared outcome arrived. Be specific. Your brain needs written evidence, not just a feeling.'],
+    ['Evening — Anxiety Log',"Log any moment where you felt judged or self-conscious. What you did or didn't do, who was there, what you imagined they thought."],
+    ['Evening — Tomorrow Prep','Name one situation coming up where you might feel the pull of judgment. Naming it reduces its power when it arrives.'],
+    ['During the Day','When anxiety hits in public: label the thought ("there\'s that story again"), redirect attention outward, stay. Do not leave while still anxious.'],
+  ].map(([t,b])=>`<div class="plan-task" style="border:1px solid #1e1e1e;border-radius:10px;padding:14px 16px;margin-bottom:10px"><div class="plan-task-title">${t}</div><p>${b}</p></div>`).join('')}<div class="section-title">WHAT'S ACTUALLY TRUE</div>${TRUTHS.map(t=>`<div class="truth-card"><div class="truth-n">${t.n}</div><div class="truth-text"><strong>${escHtml(t.strong)}</strong>${escHtml(t.rest)}</div></div>`).join('')}`;
+  wrap.appendChild(daily);
+}
+
+function togglePhase(header) {
+  const body = header.nextElementSibling;
+  const isOpen = body.classList.contains('open');
+  body.classList.toggle('open', !isOpen);
+  header.classList.toggle('open', !isOpen);
+}
+
+// ─── INIT ────────────────────────────────────────────────
+initToday();
+initLadder();
+initPlan();
+</script>
+</body>
+</html>
